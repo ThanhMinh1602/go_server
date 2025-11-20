@@ -123,6 +123,53 @@ class CloudinaryService {
 
     return null;
   }
+
+  /**
+   * Delete all resources in a folder
+   * @param {string} folderPath - Folder path (e.g., 'gogo/restaurants/123')
+   * @returns {Promise<void>}
+   */
+  async deleteFolder(folderPath) {
+    try {
+      if (!folderPath) {
+        logger.warn('Folder path is required for deletion');
+        return;
+      }
+
+      logger.debug('Deleting folder from Cloudinary', { folderPath });
+
+      // Cloudinary Admin API: delete all resources with prefix
+      // Note: This requires admin API access
+      const result = await cloudinary.api.delete_resources_by_prefix(
+        folderPath,
+        {
+          resource_type: 'image',
+        }
+      );
+
+      logger.info('Folder deleted from Cloudinary', {
+        folderPath,
+        deletedCount: result.deleted ? Object.keys(result.deleted).length : 0,
+      });
+
+      // Optionally delete the folder itself (if empty)
+      try {
+        await cloudinary.api.delete_folder(folderPath);
+        logger.debug('Empty folder removed', { folderPath });
+      } catch (folderError) {
+        // Ignore error if folder doesn't exist or is not empty
+        logger.debug('Could not remove folder (may not be empty)', { folderPath });
+      }
+    } catch (error) {
+      // Don't throw error if folder doesn't exist
+      if (error.http_code === 404 || error.http_code === 400) {
+        logger.debug('Folder not found in Cloudinary (404/400)', { folderPath });
+      } else {
+        logger.error('Error deleting folder from Cloudinary', error, { folderPath });
+        // Don't throw - continue even if folder deletion fails
+      }
+    }
+  }
 }
 
 module.exports = new CloudinaryService();

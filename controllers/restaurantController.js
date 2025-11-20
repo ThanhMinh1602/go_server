@@ -171,23 +171,53 @@ exports.deleteRestaurant = async (req, res, next) => {
       return notFound(res, 'Restaurant not found');
     }
 
-    // Delete all related images from Cloudinary
-    if (restaurant.imageUrls && restaurant.imageUrls.length > 0) {
-      logger.debug('Deleting restaurant images', {
-        restaurantId: restaurant._id,
-        imageCount: restaurant.imageUrls.length,
+    const restaurantId = restaurant._id.toString();
+    const folderPath = `gogo/restaurants/${restaurantId}`;
+
+    // Delete all images in the restaurant folder from Cloudinary
+    // This will delete all images in the folder, not just the ones in imageUrls
+    try {
+      logger.debug('Deleting restaurant folder from Cloudinary', {
+        restaurantId,
+        folderPath,
       });
       
-      await cloudinaryService.deleteMultipleImages(restaurant.imageUrls);
+      await cloudinaryService.deleteFolder(folderPath);
       
-      logger.info('Restaurant images deleted', {
-        restaurantId: restaurant._id,
-        imageCount: restaurant.imageUrls.length,
+      logger.info('Restaurant folder deleted from Cloudinary', {
+        restaurantId,
+        folderPath,
+      });
+    } catch (error) {
+      // Log error but continue with restaurant deletion
+      logger.error('Error deleting restaurant folder from Cloudinary', error, {
+        restaurantId,
+        folderPath,
       });
     }
 
+    // Also delete images from imageUrls list (backup, in case folder deletion fails)
+    if (restaurant.imageUrls && restaurant.imageUrls.length > 0) {
+      try {
+        logger.debug('Deleting restaurant images from imageUrls', {
+          restaurantId,
+          imageCount: restaurant.imageUrls.length,
+        });
+        
+        await cloudinaryService.deleteMultipleImages(restaurant.imageUrls);
+        
+        logger.info('Restaurant images deleted', {
+          restaurantId,
+          imageCount: restaurant.imageUrls.length,
+        });
+      } catch (error) {
+        logger.error('Error deleting restaurant images', error, {
+          restaurantId,
+        });
+      }
+    }
+
     // Delete restaurant from database
-    const restaurantId = restaurant._id.toString();
     await restaurant.deleteOne();
 
     logger.info('Restaurant deleted successfully', { restaurantId });
