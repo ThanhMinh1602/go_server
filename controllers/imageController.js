@@ -25,14 +25,38 @@ exports.uploadImage = async (req, res, next) => {
 
     // Determine folder based on context
     let folder = 'gogo';
+    let publicId = null;
+    
     if (restaurantId) {
       folder = `gogo/restaurants/${restaurantId}`;
     } else if (userId) {
+      // Đối với avatar user, sử dụng public_id cố định để đảm bảo chỉ có 1 avatar
       folder = `gogo/users/${userId}`;
+      publicId = `${folder}/avatar`; // Public ID cố định cho avatar
+      
+      // Xóa avatar cũ trước khi upload mới (nếu có)
+      // Với public_id cố định, Cloudinary sẽ tự động thay thế, nhưng xóa trước để chắc chắn
+      try {
+        const oldAvatarUrl = req.body.oldAvatarUrl; // Client có thể gửi URL avatar cũ
+        if (oldAvatarUrl) {
+          logger.debug('Deleting old avatar before upload', { userId, oldAvatarUrl });
+          await cloudinaryService.deleteImage(oldAvatarUrl);
+        } else {
+          // Nếu không có URL cũ, thử xóa bằng public_id
+          logger.debug('Attempting to delete old avatar by public_id', { publicId });
+          await cloudinaryService.deleteImage(publicId);
+        }
+      } catch (deleteError) {
+        // Ignore error nếu không có avatar cũ (404)
+        logger.debug('Old avatar not found or already deleted', { userId });
+      }
     }
 
-    // Upload to Cloudinary
-    const imageUrl = await cloudinaryService.uploadImage(filePath, folder);
+    // Upload to Cloudinary với public_id cố định cho avatar (sẽ tự động thay thế file cũ)
+    const imageUrl = await cloudinaryService.uploadImage(filePath, folder, {
+      publicId: publicId,
+      overwrite: true, // Đảm bảo thay thế file cũ nếu có
+    });
 
     logger.info('Image uploaded successfully', {
       url: imageUrl,

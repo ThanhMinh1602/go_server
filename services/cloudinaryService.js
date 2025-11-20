@@ -11,10 +11,13 @@ class CloudinaryService {
     });
   }
 
-  async uploadImage(filePath, folder = 'gogo') {
+  async uploadImage(filePath, folder = 'gogo', options = {}) {
     try {
-      logger.debug('Uploading image to Cloudinary', { folder, filePath });
-      const result = await cloudinary.uploader.upload(filePath, {
+      const { publicId, overwrite = false } = options;
+      
+      logger.debug('Uploading image to Cloudinary', { folder, filePath, publicId, overwrite });
+      
+      const uploadOptions = {
         folder: folder,
         resource_type: 'image',
         transformation: [
@@ -22,7 +25,15 @@ class CloudinaryService {
           { quality: 'auto' },
           { fetch_format: 'auto' }
         ]
-      });
+      };
+
+      // Nếu có publicId, sử dụng nó để đảm bảo file được thay thế
+      if (publicId) {
+        uploadOptions.public_id = publicId;
+        uploadOptions.overwrite = overwrite !== false; // Mặc định overwrite = true nếu có publicId
+      }
+
+      const result = await cloudinary.uploader.upload(filePath, uploadOptions);
 
       logger.debug('Image uploaded to Cloudinary', {
         publicId: result.public_id,

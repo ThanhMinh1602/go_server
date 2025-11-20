@@ -106,11 +106,43 @@ exports.updateRestaurant = async (req, res, next) => {
       return notFound(res, 'Restaurant not found');
     }
 
+    // Lưu danh sách images cũ để so sánh và xóa
+    const oldImageUrls = restaurant.imageUrls ? [...restaurant.imageUrls] : [];
+
     // Update fields
     if (name) restaurant.name = name;
     if (types && Array.isArray(types)) restaurant.types = types;
     if (imageUrls && Array.isArray(imageUrls)) restaurant.imageUrls = imageUrls;
     if (location !== undefined) restaurant.location = location;
+
+    // Xóa các images cũ không còn trong danh sách mới
+    if (oldImageUrls.length > 0 && imageUrls && Array.isArray(imageUrls)) {
+      const imagesToDelete = oldImageUrls.filter(
+        (oldUrl) => !imageUrls.includes(oldUrl)
+      );
+
+      if (imagesToDelete.length > 0) {
+        logger.debug('Deleting old restaurant images', {
+          restaurantId: restaurant._id,
+          imageCount: imagesToDelete.length,
+          imagesToDelete,
+        });
+
+        try {
+          await cloudinaryService.deleteMultipleImages(imagesToDelete);
+          logger.info('Old restaurant images deleted', {
+            restaurantId: restaurant._id,
+            imageCount: imagesToDelete.length,
+          });
+        } catch (deleteError) {
+          // Log error nhưng không throw để không ảnh hưởng đến việc update restaurant
+          logger.error('Error deleting old restaurant images', deleteError, {
+            restaurantId: restaurant._id,
+            imageCount: imagesToDelete.length,
+          });
+        }
+      }
+    }
 
     await restaurant.save();
 
