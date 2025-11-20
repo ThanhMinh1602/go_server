@@ -79,6 +79,25 @@ class CloudinaryService {
     }
   }
 
+  async deleteMultipleImages(imageUrls) {
+    try {
+      if (!Array.isArray(imageUrls) || imageUrls.length === 0) {
+        return;
+      }
+
+      logger.debug('Deleting multiple images from Cloudinary', { count: imageUrls.length });
+      
+      // Delete all images in parallel
+      const deletePromises = imageUrls.map(url => this.deleteImage(url));
+      await Promise.all(deletePromises);
+      
+      logger.info('Multiple images deletion completed', { count: imageUrls.length });
+    } catch (error) {
+      logger.error('Error deleting multiple images from Cloudinary', error, { count: imageUrls?.length });
+      // Don't throw - continue even if some deletions fail
+    }
+  }
+
   extractPublicId(url) {
     if (!url) return null;
 

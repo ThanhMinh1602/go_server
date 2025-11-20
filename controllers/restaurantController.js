@@ -1,6 +1,9 @@
 const Restaurant = require('../models/Restaurant');
 const logger = require('../services/logger');
+const cloudinaryService = require('../services/cloudinaryService');
 const { ok, created, badRequest, notFound } = require('../utils/responseHelper');
+const { emitRestaurantEvent } = require('../utils/socketHelper');
+const socketEvents = require('../utils/socketEvents');
 
 // @desc    Get all restaurants
 // @route   GET /api/restaurants
@@ -77,6 +80,11 @@ exports.createRestaurant = async (req, res, next) => {
 
     logger.info('Restaurant created successfully', { restaurantId: restaurant._id, name });
 
+    // Emit socket event để notify clients
+    emitRestaurantEvent(req, socketEvents.RESTAURANT_CREATED, {
+      restaurant: restaurant.toJSON(),
+    });
+
     return created(res, null, {
       restaurant: restaurant.toJSON(),
     });
@@ -106,6 +114,13 @@ exports.updateRestaurant = async (req, res, next) => {
 
     await restaurant.save();
 
+    logger.info('Restaurant updated successfully', { restaurantId: restaurant._id });
+
+    // Emit socket event để notify clients
+    emitRestaurantEvent(req, socketEvents.RESTAURANT_UPDATED, {
+      restaurant: restaurant.toJSON(),
+    });
+
     return ok(res, null, {
       restaurant: restaurant.toJSON(),
     });
@@ -124,10 +139,35 @@ exports.deleteRestaurant = async (req, res, next) => {
       return notFound(res, 'Restaurant not found');
     }
 
+    // Delete all related images from Cloudinary
+    if (restaurant.imageUrls && restaurant.imageUrls.length > 0) {
+      logger.debug('Deleting restaurant images', {
+        restaurantId: restaurant._id,
+        imageCount: restaurant.imageUrls.length,
+      });
+      
+      await cloudinaryService.deleteMultipleImages(restaurant.imageUrls);
+      
+      logger.info('Restaurant images deleted', {
+        restaurantId: restaurant._id,
+        imageCount: restaurant.imageUrls.length,
+      });
+    }
+
+    // Delete restaurant from database
+    const restaurantId = restaurant._id.toString();
     await restaurant.deleteOne();
+
+    logger.info('Restaurant deleted successfully', { restaurantId });
+
+    // Emit socket event để notify clients
+    emitRestaurantEvent(req, socketEvents.RESTAURANT_DELETED, {
+      restaurantId,
+    });
 
     return ok(res, 'Restaurant deleted');
   } catch (error) {
+    logger.error('Delete restaurant error', error, { restaurantId: req.params.id });
     next(error);
   }
 };

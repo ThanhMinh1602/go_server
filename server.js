@@ -1,5 +1,7 @@
 require('dotenv').config();
 const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
 const cors = require('cors');
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./config/swagger');
@@ -8,6 +10,7 @@ const errorHandler = require('./middleware/errorHandler');
 const logger = require('./services/logger');
 const { morganMiddleware, requestLogger } = require('./middleware/logger');
 const { ok, notFound } = require('./utils/responseHelper');
+const socketEvents = require('./utils/socketEvents');
 
 // Import routes
 const authRoutes = require('./routes/authRoutes');
@@ -21,6 +24,40 @@ connectDB();
 
 // Initialize app
 const app = express();
+const server = http.createServer(app);
+
+// Initialize Socket.IO
+const io = new Server(server, {
+  cors: {
+    origin: process.env.CORS_ORIGIN || '*',
+    methods: ['GET', 'POST'],
+    credentials: true,
+  },
+});
+
+// Socket.IO connection handling
+io.on('connection', (socket) => {
+  logger.info('Client connected', { socketId: socket.id });
+
+  socket.on('disconnect', () => {
+    logger.info('Client disconnected', { socketId: socket.id });
+  });
+
+  // Join room để nhận updates về restaurants
+  socket.on(socketEvents.JOIN_RESTAURANTS, () => {
+    socket.join('restaurants');
+    logger.debug('Client joined restaurants room', { socketId: socket.id });
+  });
+
+  // Leave room
+  socket.on(socketEvents.LEAVE_RESTAURANTS, () => {
+    socket.leave('restaurants');
+    logger.debug('Client left restaurants room', { socketId: socket.id });
+  });
+});
+
+// Export io để sử dụng trong controllers
+app.set('io', io);
 
 // Logging middleware (phải đặt đầu tiên)
 app.use(morganMiddleware);
@@ -85,10 +122,11 @@ app.use(errorHandler);
 
 // Start server
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   logger.info(`Server running on port ${PORT}`);
   logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
   logger.info(`Log level: ${process.env.LOG_LEVEL || 'debug'}`);
+  logger.info(`Socket.IO enabled on port ${PORT}`);
   logger.debug('Server initialized successfully');
 });
 
