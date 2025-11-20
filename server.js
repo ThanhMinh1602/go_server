@@ -15,9 +15,9 @@ const socketEvents = require('./utils/socketEvents');
 // Import routes
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
-const restaurantRoutes = require('./routes/restaurantRoutes');
-const imageRoutes = require('./routes/imageRoutes');
 const locationRoutes = require('./routes/locationRoutes');
+const imageRoutes = require('./routes/imageRoutes');
+const geocodingRoutes = require('./routes/geocodingRoutes');
 
 // Connect to database
 connectDB();
@@ -43,16 +43,16 @@ io.on('connection', (socket) => {
     logger.info('Client disconnected', { socketId: socket.id });
   });
 
-  // Join room để nhận updates về restaurants
-  socket.on(socketEvents.JOIN_RESTAURANTS, () => {
-    socket.join('restaurants');
-    logger.debug('Client joined restaurants room', { socketId: socket.id });
+  // Join room để nhận updates về locations
+  socket.on(socketEvents.JOIN_LOCATIONS, () => {
+    socket.join('locations');
+    logger.debug('Client joined locations room', { socketId: socket.id });
   });
 
   // Leave room
-  socket.on(socketEvents.LEAVE_RESTAURANTS, () => {
-    socket.leave('restaurants');
-    logger.debug('Client left restaurants room', { socketId: socket.id });
+  socket.on(socketEvents.LEAVE_LOCATIONS, () => {
+    socket.leave('locations');
+    logger.debug('Client left locations room', { socketId: socket.id });
   });
 });
 
@@ -108,9 +108,9 @@ app.get('/health', (req, res) => {
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
-app.use('/api/restaurants', restaurantRoutes);
+app.use('/api/locations', locationRoutes);
 app.use('/api/images', imageRoutes);
-app.use('/api/location', locationRoutes);
+app.use('/api/location', geocodingRoutes);
 
 // 404 handler
 app.use((req, res) => {

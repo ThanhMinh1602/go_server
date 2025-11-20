@@ -1,32 +1,23 @@
 const express = require('express');
 const router = express.Router();
 const {
-  getAddress,
-  getFullAddress,
+  getAllLocations,
+  getLocation,
+  createLocation,
+  updateLocation,
+  deleteLocation,
+  getDistinctAreas,
 } = require('../controllers/locationController');
 
 /**
  * @swagger
- * /api/location/address:
+ * /api/locations/areas:
  *   get:
- *     summary: Get address (area/town name) from latitude and longitude
- *     tags: [Location]
- *     parameters:
- *       - in: query
- *         name: lat
- *         required: true
- *         schema:
- *           type: number
- *         description: Latitude
- *       - in: query
- *         name: lng
- *         required: true
- *         schema:
- *           type: number
- *         description: Longitude
+ *     summary: Get distinct areas
+ *     tags: [Locations]
  *     responses:
  *       200:
- *         description: Address information
+ *         description: List of distinct areas
  *         content:
  *           application/json:
  *             schema:
@@ -34,36 +25,29 @@ const {
  *               properties:
  *                 success:
  *                   type: boolean
- *                 address:
- *                   type: string
- *                   description: Area/town name
- *       400:
- *         description: Bad request (missing or invalid lat/lng)
+ *                 areas:
+ *                   type: array
+ *                   items:
+ *                     type: string
  */
-router.get('/address', getAddress);
+router.get('/areas', getDistinctAreas);
 
 /**
  * @swagger
- * /api/location/full-address:
+ * /api/locations/{id}:
  *   get:
- *     summary: Get full address information from latitude and longitude
- *     tags: [Location]
+ *     summary: Get location by ID
+ *     tags: [Locations]
  *     parameters:
- *       - in: query
- *         name: lat
+ *       - in: path
+ *         name: id
  *         required: true
  *         schema:
- *           type: number
- *         description: Latitude
- *       - in: query
- *         name: lng
- *         required: true
- *         schema:
- *           type: number
- *         description: Longitude
+ *           type: string
+ *         description: Location ID
  *     responses:
  *       200:
- *         description: Full address information
+ *         description: Location information
  *         content:
  *           application/json:
  *             schema:
@@ -71,19 +55,191 @@ router.get('/address', getAddress);
  *               properties:
  *                 success:
  *                   type: boolean
- *                 area:
- *                   type: string
- *                   description: Area name (Xã/Phường/Thị trấn)
- *                 address:
- *                   type: string
- *                   description: Full address
- *                 name:
- *                   type: string
- *                   description: Place name (POI name if available)
- *       400:
- *         description: Bad request (missing or invalid lat/lng)
+ *                 location:
+ *                   $ref: '#/components/schemas/Location'
+ *       404:
+ *         description: Location not found
  */
-router.get('/full-address', getFullAddress);
+router.get('/:id', getLocation);
+
+/**
+ * @swagger
+ * /api/locations:
+ *   get:
+ *     summary: Get all locations
+ *     tags: [Locations]
+ *     parameters:
+ *       - in: query
+ *         name: area
+ *         schema:
+ *           type: string
+ *         description: Filter by area
+ *       - in: query
+ *         name: type
+ *         schema:
+ *           type: string
+ *           enum: [food, coffee]
+ *         description: Filter by type
+ *     responses:
+ *       200:
+ *         description: List of locations
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 count:
+ *                   type: number
+ *                 locations:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Location'
+ */
+router.get('/', getAllLocations);
+
+/**
+ * @swagger
+ * /api/locations:
+ *   post:
+ *     summary: Create a new location
+ *     tags: [Locations]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - types
+ *               - latLng
+ *               - address
+ *               - area
+ *             properties:
+ *               name:
+ *                 type: string
+ *               types:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   enum: [food, coffee]
+ *               imageUrls:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               latLng:
+ *                 type: object
+ *                 properties:
+ *                   latitude:
+ *                     type: number
+ *                   longitude:
+ *                     type: number
+ *               address:
+ *                 type: string
+ *               area:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Location created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 location:
+ *                   $ref: '#/components/schemas/Location'
+ *       400:
+ *         description: Bad request
+ */
+router.post('/', createLocation);
+
+/**
+ * @swagger
+ * /api/locations/{id}:
+ *   put:
+ *     summary: Update location
+ *     tags: [Locations]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Location ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               types:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   enum: [food, coffee]
+ *               imageUrls:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               latLng:
+ *                 type: object
+ *                 properties:
+ *                   latitude:
+ *                     type: number
+ *                   longitude:
+ *                     type: number
+ *               address:
+ *                 type: string
+ *               area:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Location updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 location:
+ *                   $ref: '#/components/schemas/Location'
+ *       404:
+ *         description: Location not found
+ */
+router.put('/:id', updateLocation);
+
+/**
+ * @swagger
+ * /api/locations/{id}:
+ *   delete:
+ *     summary: Delete location
+ *     tags: [Locations]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Location ID
+ *     responses:
+ *       200:
+ *         description: Location deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Success'
+ *       404:
+ *         description: Location not found
+ */
+router.delete('/:id', deleteLocation);
 
 module.exports = router;
 

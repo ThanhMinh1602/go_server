@@ -126,7 +126,7 @@ class CloudinaryService {
 
   /**
    * Delete all resources in a folder
-   * @param {string} folderPath - Folder path (e.g., 'gogo/restaurants/123')
+   * @param {string} folderPath - Folder path (e.g., 'gogo/locations/123')
    * @returns {Promise<void>}
    */
   async deleteFolder(folderPath) {

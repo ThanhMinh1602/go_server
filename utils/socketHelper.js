@@ -1,12 +1,12 @@
 const logger = require('../services/logger');
 
 /**
- * Emit socket event to restaurants room
+ * Emit socket event to locations room
  * @param {Object} req - Express request object
  * @param {string} event - Event name
  * @param {Object} data - Data to emit
  */
-function emitRestaurantEvent(req, event, data) {
+function emitLocationEvent(req, event, data) {
   try {
     const io = req.app.get('io');
     if (!io) {
@@ -14,14 +14,13 @@ function emitRestaurantEvent(req, event, data) {
       return;
     }
 
-    logger.debug('Emitting restaurant event', { event, data });
-    io.to('restaurants').emit(event, data);
+    logger.debug('Emitting location event', { event, data });
+    io.to('locations').emit(event, data);
   } catch (error) {
     logger.error('Error emitting socket event', error, { event, data });
   }
 }
 
 module.exports = {
-  emitRestaurantEvent,
+  emitLocationEvent,
 };
-

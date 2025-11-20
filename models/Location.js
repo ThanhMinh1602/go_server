@@ -1,12 +1,23 @@
 const mongoose = require('mongoose');
+const latLngSchema = require('./LatLng');
 
 const locationSchema = new mongoose.Schema({
-  latitude: {
-    type: Number,
+  name: {
+    type: String,
     required: true,
+    trim: true,
   },
-  longitude: {
-    type: Number,
+  types: {
+    type: [String],
+    required: true,
+    enum: ['food', 'coffee'],
+  },
+  imageUrls: {
+    type: [String],
+    default: [],
+  },
+  latLng: {
+    type: latLngSchema,
     required: true,
   },
   address: {
@@ -18,8 +29,16 @@ const locationSchema = new mongoose.Schema({
     required: true,
   },
 }, {
-  _id: false, // Don't create _id for subdocuments
+  timestamps: true, // Adds createdAt and updatedAt
 });
 
-module.exports = locationSchema;
+// Method to convert to JSON
+locationSchema.methods.toJSON = function() {
+  const obj = this.toObject();
+  obj.id = obj._id.toString();
+  delete obj._id;
+  delete obj.__v;
+  return obj;
+};
 
+module.exports = mongoose.model('Location', locationSchema);

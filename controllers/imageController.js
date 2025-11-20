@@ -13,13 +13,13 @@ exports.uploadImage = async (req, res, next) => {
       return badRequest(res, 'No file uploaded');
     }
 
-    const { restaurantId, userId } = req.body;
+    const { locationId, userId } = req.body;
     const filePath = req.file.path;
 
     logger.debug('Image upload started', {
       filename: req.file.filename,
       size: req.file.size,
-      restaurantId,
+      locationId,
       userId,
     });
 
@@ -27,8 +27,8 @@ exports.uploadImage = async (req, res, next) => {
     let folder = 'gogo';
     let publicId = null;
     
-    if (restaurantId) {
-      folder = `gogo/restaurants/${restaurantId}`;
+    if (locationId) {
+      folder = `gogo/locations/${locationId}`;
     } else if (userId) {
       // Đối với avatar user, sử dụng public_id cố định để đảm bảo chỉ có 1 avatar
       folder = `gogo/users/${userId}`;
@@ -73,7 +73,7 @@ exports.uploadImage = async (req, res, next) => {
   } catch (error) {
     logger.error('Image upload error', error, {
       filename: req.file?.filename,
-      restaurantId: req.body.restaurantId,
+      locationId: req.body.locationId,
       userId: req.body.userId,
     });
     // Clean up local file if upload fails
@@ -97,13 +97,13 @@ exports.uploadMultipleImages = async (req, res, next) => {
       return badRequest(res, 'No files uploaded');
     }
 
-    const { restaurantId, userId } = req.body;
+    const { locationId, userId } = req.body;
     const filePaths = req.files.map(file => file.path);
 
     // Determine folder
     let folder = 'gogo';
-    if (restaurantId) {
-      folder = `gogo/restaurants/${restaurantId}`;
+    if (locationId) {
+      folder = `gogo/locations/${locationId}`;
     } else if (userId) {
       folder = `gogo/users/${userId}`;
     }

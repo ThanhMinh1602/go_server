@@ -10,14 +10,14 @@ const RECONNECT = 'reconnect';
 const CONNECT_ERROR = 'connect_error';
 const ERROR = 'error';
 
-// Restaurant Room Events
-const JOIN_RESTAURANTS = 'join:restaurants';
-const LEAVE_RESTAURANTS = 'leave:restaurants';
+// Location Room Events
+const JOIN_LOCATIONS = 'join:locations';
+const LEAVE_LOCATIONS = 'leave:locations';
 
-// Restaurant Events
-const RESTAURANT_CREATED = 'restaurant:created';
-const RESTAURANT_UPDATED = 'restaurant:updated';
-const RESTAURANT_DELETED = 'restaurant:deleted';
+// Location Events
+const LOCATION_CREATED = 'location:created';
+const LOCATION_UPDATED = 'location:updated';
+const LOCATION_DELETED = 'location:deleted';
 
 module.exports = {
   // Connection Events
@@ -28,12 +28,11 @@ module.exports = {
   ERROR,
 
   // Room Events
-  JOIN_RESTAURANTS,
-  LEAVE_RESTAURANTS,
+  JOIN_LOCATIONS,
+  LEAVE_LOCATIONS,
 
-  // Restaurant Events
-  RESTAURANT_CREATED,
-  RESTAURANT_UPDATED,
-  RESTAURANT_DELETED,
+  // Location Events
+  LOCATION_CREATED,
+  LOCATION_UPDATED,
+  LOCATION_DELETED,
 };
-
