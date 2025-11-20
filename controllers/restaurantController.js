@@ -1,0 +1,173 @@
+const Restaurant = require('../models/Restaurant');
+const logger = require('../services/logger');
+
+// @desc    Get all restaurants
+// @route   GET /api/restaurants
+// @access  Public
+exports.getAllRestaurants = async (req, res, next) => {
+  try {
+    const { area, type } = req.query;
+
+    logger.debug('Get all restaurants', { area, type });
+
+    let query = {};
+
+    // Build query for filtering
+    if (area && area !== 'All' && area !== 'all') {
+      query['location.area'] = area;
+    }
+
+    if (type && type !== 'All' && type !== 'all') {
+      query.types = { $in: [type] };
+    }
+
+    const restaurants = await Restaurant.find(query).sort({ createdAt: -1 });
+
+    logger.info('Restaurants retrieved', { count: restaurants.length, area, type });
+
+    res.json({
+      success: true,
+      count: restaurants.length,
+      restaurants: restaurants.map(r => r.toJSON()),
+    });
+  } catch (error) {
+    logger.error('Get all restaurants error', error, { area: req.query.area, type: req.query.type });
+    next(error);
+  }
+};
+
+// @desc    Get restaurant by ID
+// @route   GET /api/restaurants/:id
+// @access  Public
+exports.getRestaurant = async (req, res, next) => {
+  try {
+    const restaurant = await Restaurant.findById(req.params.id);
+    if (!restaurant) {
+      return res.status(404).json({
+        success: false,
+        message: 'Restaurant not found',
+      });
+    }
+    res.json({
+      success: true,
+      restaurant: restaurant.toJSON(),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Create restaurant
+// @route   POST /api/restaurants
+// @access  Public (can be changed to Private if needed)
+exports.createRestaurant = async (req, res, next) => {
+  try {
+    const { name, types, imageUrls, location } = req.body;
+
+    logger.debug('Create restaurant attempt', { name, types, hasLocation: !!location });
+
+    // Validation
+    if (!name || !types || !Array.isArray(types) || types.length === 0) {
+      logger.warn('Create restaurant validation failed', { name, types });
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide name and at least one type',
+      });
+    }
+
+    const restaurant = await Restaurant.create({
+      name,
+      types,
+      imageUrls: imageUrls || [],
+      location: location || null,
+    });
+
+    logger.info('Restaurant created successfully', { restaurantId: restaurant._id, name });
+
+    res.status(201).json({
+      success: true,
+      restaurant: restaurant.toJSON(),
+    });
+  } catch (error) {
+    logger.error('Create restaurant error', error, { name: req.body.name });
+    next(error);
+  }
+};
+
+// @desc    Update restaurant
+// @route   PUT /api/restaurants/:id
+// @access  Public (can be changed to Private if needed)
+exports.updateRestaurant = async (req, res, next) => {
+  try {
+    const { name, types, imageUrls, location } = req.body;
+
+    const restaurant = await Restaurant.findById(req.params.id);
+    if (!restaurant) {
+      return res.status(404).json({
+        success: false,
+        message: 'Restaurant not found',
+      });
+    }
+
+    // Update fields
+    if (name) restaurant.name = name;
+    if (types && Array.isArray(types)) restaurant.types = types;
+    if (imageUrls && Array.isArray(imageUrls)) restaurant.imageUrls = imageUrls;
+    if (location !== undefined) restaurant.location = location;
+
+    await restaurant.save();
+
+    res.json({
+      success: true,
+      restaurant: restaurant.toJSON(),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Delete restaurant
+// @route   DELETE /api/restaurants/:id
+// @access  Public (can be changed to Private if needed)
+exports.deleteRestaurant = async (req, res, next) => {
+  try {
+    const restaurant = await Restaurant.findById(req.params.id);
+    if (!restaurant) {
+      return res.status(404).json({
+        success: false,
+        message: 'Restaurant not found',
+      });
+    }
+
+    await restaurant.deleteOne();
+
+    res.json({
+      success: true,
+      message: 'Restaurant deleted',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get distinct areas
+// @route   GET /api/restaurants/areas
+// @access  Public
+exports.getDistinctAreas = async (req, res, next) => {
+  try {
+    const restaurants = await Restaurant.find({
+      'location.area': { $exists: true, $ne: null, $ne: '' },
+    });
+
+    const areas = [...new Set(restaurants.map(r => r.location?.area).filter(Boolean))];
+    areas.sort();
+
+    res.json({
+      success: true,
+      areas,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
