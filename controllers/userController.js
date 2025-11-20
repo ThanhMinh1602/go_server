@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const logger = require('../services/logger');
+const { ok, notFound, forbidden } = require('../utils/responseHelper');
 
 // @desc    Get all users
 // @route   GET /api/users
@@ -7,8 +8,7 @@ const logger = require('../services/logger');
 exports.getAllUsers = async (req, res, next) => {
   try {
     const users = await User.find().sort({ createdAt: -1 });
-    res.json({
-      success: true,
+    return ok(res, null, {
       count: users.length,
       users: users.map(user => user.toJSON()),
     });
@@ -24,13 +24,9 @@ exports.getUser = async (req, res, next) => {
   try {
     const user = await User.findById(req.params.id);
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found',
-      });
+      return notFound(res, 'User not found');
     }
-    res.json({
-      success: true,
+    return ok(res, null, {
       user: user.toJSON(),
     });
   } catch (error) {
@@ -48,18 +44,12 @@ exports.updateUser = async (req, res, next) => {
     // Check if user exists
     const user = await User.findById(req.params.id);
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found',
-      });
+      return notFound(res, 'User not found');
     }
 
     // Check if user is updating their own profile or is admin
     if (req.user._id.toString() !== req.params.id) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to update this profile',
-      });
+      return forbidden(res, 'Not authorized to update this profile');
     }
 
     // Update fields
@@ -69,8 +59,7 @@ exports.updateUser = async (req, res, next) => {
 
     await user.save();
 
-    res.json({
-      success: true,
+    return ok(res, null, {
       user: user.toJSON(),
     });
   } catch (error) {

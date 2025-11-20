@@ -1,5 +1,6 @@
 const Restaurant = require('../models/Restaurant');
 const logger = require('../services/logger');
+const { ok, created, badRequest, notFound } = require('../utils/responseHelper');
 
 // @desc    Get all restaurants
 // @route   GET /api/restaurants
@@ -25,8 +26,7 @@ exports.getAllRestaurants = async (req, res, next) => {
 
     logger.info('Restaurants retrieved', { count: restaurants.length, area, type });
 
-    res.json({
-      success: true,
+    return ok(res, null, {
       count: restaurants.length,
       restaurants: restaurants.map(r => r.toJSON()),
     });
@@ -43,13 +43,9 @@ exports.getRestaurant = async (req, res, next) => {
   try {
     const restaurant = await Restaurant.findById(req.params.id);
     if (!restaurant) {
-      return res.status(404).json({
-        success: false,
-        message: 'Restaurant not found',
-      });
+      return notFound(res, 'Restaurant not found');
     }
-    res.json({
-      success: true,
+    return ok(res, null, {
       restaurant: restaurant.toJSON(),
     });
   } catch (error) {
@@ -69,10 +65,7 @@ exports.createRestaurant = async (req, res, next) => {
     // Validation
     if (!name || !types || !Array.isArray(types) || types.length === 0) {
       logger.warn('Create restaurant validation failed', { name, types });
-      return res.status(400).json({
-        success: false,
-        message: 'Please provide name and at least one type',
-      });
+      return badRequest(res, 'Please provide name and at least one type');
     }
 
     const restaurant = await Restaurant.create({
@@ -84,8 +77,7 @@ exports.createRestaurant = async (req, res, next) => {
 
     logger.info('Restaurant created successfully', { restaurantId: restaurant._id, name });
 
-    res.status(201).json({
-      success: true,
+    return created(res, null, {
       restaurant: restaurant.toJSON(),
     });
   } catch (error) {
@@ -103,10 +95,7 @@ exports.updateRestaurant = async (req, res, next) => {
 
     const restaurant = await Restaurant.findById(req.params.id);
     if (!restaurant) {
-      return res.status(404).json({
-        success: false,
-        message: 'Restaurant not found',
-      });
+      return notFound(res, 'Restaurant not found');
     }
 
     // Update fields
@@ -117,8 +106,7 @@ exports.updateRestaurant = async (req, res, next) => {
 
     await restaurant.save();
 
-    res.json({
-      success: true,
+    return ok(res, null, {
       restaurant: restaurant.toJSON(),
     });
   } catch (error) {
@@ -133,18 +121,12 @@ exports.deleteRestaurant = async (req, res, next) => {
   try {
     const restaurant = await Restaurant.findById(req.params.id);
     if (!restaurant) {
-      return res.status(404).json({
-        success: false,
-        message: 'Restaurant not found',
-      });
+      return notFound(res, 'Restaurant not found');
     }
 
     await restaurant.deleteOne();
 
-    res.json({
-      success: true,
-      message: 'Restaurant deleted',
-    });
+    return ok(res, 'Restaurant deleted');
   } catch (error) {
     next(error);
   }
@@ -162,8 +144,7 @@ exports.getDistinctAreas = async (req, res, next) => {
     const areas = [...new Set(restaurants.map(r => r.location?.area).filter(Boolean))];
     areas.sort();
 
-    res.json({
-      success: true,
+    return ok(res, null, {
       areas,
     });
   } catch (error) {

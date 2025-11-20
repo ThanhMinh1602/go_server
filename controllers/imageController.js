@@ -1,5 +1,6 @@
 const cloudinaryService = require('../services/cloudinaryService');
 const logger = require('../services/logger');
+const { ok, badRequest } = require('../utils/responseHelper');
 const fs = require('fs');
 
 // @desc    Upload image
@@ -9,10 +10,7 @@ exports.uploadImage = async (req, res, next) => {
   try {
     if (!req.file) {
       logger.warn('Image upload failed: no file', { body: req.body });
-      return res.status(400).json({
-        success: false,
-        message: 'No file uploaded',
-      });
+      return badRequest(res, 'No file uploaded');
     }
 
     const { restaurantId, userId } = req.body;
@@ -45,10 +43,8 @@ exports.uploadImage = async (req, res, next) => {
     // Delete local file after upload
     fs.unlinkSync(filePath);
 
-    res.json({
-      success: true,
+    return ok(res, 'Image uploaded successfully', {
       url: imageUrl,
-      message: 'Image uploaded successfully',
     });
   } catch (error) {
     logger.error('Image upload error', error, {
@@ -74,10 +70,7 @@ exports.uploadImage = async (req, res, next) => {
 exports.uploadMultipleImages = async (req, res, next) => {
   try {
     if (!req.files || req.files.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'No files uploaded',
-      });
+      return badRequest(res, 'No files uploaded');
     }
 
     const { restaurantId, userId } = req.body;
@@ -99,15 +92,13 @@ exports.uploadMultipleImages = async (req, res, next) => {
       try {
         fs.unlinkSync(file.path);
       } catch (unlinkError) {
-        console.error('Error deleting local file:', unlinkError);
+        logger.error('Error deleting local file', unlinkError);
       }
     });
 
-    res.json({
-      success: true,
+    return ok(res, `${urls.length} image(s) uploaded successfully`, {
       urls,
       count: urls.length,
-      message: `${urls.length} image(s) uploaded successfully`,
     });
   } catch (error) {
     // Clean up remaining files
@@ -136,10 +127,7 @@ exports.deleteImage = async (req, res, next) => {
 
     await cloudinaryService.deleteImage(imageUrl);
 
-    res.json({
-      success: true,
-      message: 'Image deleted successfully',
-    });
+    return ok(res, 'Image deleted successfully');
   } catch (error) {
     next(error);
   }

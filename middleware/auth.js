@@ -1,6 +1,7 @@
 const { verifyToken } = require('../services/jwtService');
 const User = require('../models/User');
 const logger = require('../services/logger');
+const { unauthorized } = require('../utils/responseHelper');
 
 const auth = async (req, res, next) => {
   try {
@@ -9,10 +10,7 @@ const auth = async (req, res, next) => {
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       logger.warn('Authentication failed: no token provided', { url: req.url, method: req.method });
-      return res.status(401).json({
-        success: false,
-        message: 'No token provided',
-      });
+      return unauthorized(res, 'No token provided');
     }
 
     const token = authHeader.substring(7); // Remove 'Bearer ' prefix
@@ -21,20 +19,14 @@ const auth = async (req, res, next) => {
     const decoded = verifyToken(token);
     if (!decoded) {
       logger.warn('Authentication failed: invalid token', { url: req.url, method: req.method });
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid token',
-      });
+      return unauthorized(res, 'Invalid token');
     }
 
     // Get user from database
     const user = await User.findById(decoded.userId);
     if (!user) {
       logger.warn('Authentication failed: user not found', { userId: decoded.userId, url: req.url });
-      return res.status(401).json({
-        success: false,
-        message: 'User not found',
-      });
+      return unauthorized(res, 'User not found');
     }
 
     logger.debug('User authenticated', { userId: user._id, email: user.email, url: req.url });
@@ -42,11 +34,7 @@ const auth = async (req, res, next) => {
     next();
   } catch (error) {
     logger.error('Authentication error', error, { url: req.url, method: req.method });
-    res.status(401).json({
-      success: false,
-      message: 'Authentication failed',
-      error: error.message,
-    });
+    return unauthorized(res, 'Authentication failed');
   }
 };
 

@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const { generateToken } = require('../services/jwtService');
 const logger = require('../services/logger');
+const { created, ok, badRequest, unauthorized, notFound } = require('../utils/responseHelper');
 
 // @desc    Register new user
 // @route   POST /api/auth/register
@@ -14,20 +15,14 @@ exports.register = async (req, res, next) => {
     // Validation
     if (!email || !password || !name) {
       logger.warn('Register validation failed', { email, hasPassword: !!password, hasName: !!name });
-      return res.status(400).json({
-        success: false,
-        message: 'Please provide email, password, and name',
-      });
+      return badRequest(res, 'Please provide email, password, and name');
     }
 
     // Check if user exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       logger.warn('Register failed: email already exists', { email });
-      return res.status(400).json({
-        success: false,
-        message: 'Email already exists',
-      });
+      return badRequest(res, 'Email already exists');
     }
 
     // Create user
@@ -42,8 +37,7 @@ exports.register = async (req, res, next) => {
 
     logger.info('User registered successfully', { userId: user._id, email });
 
-    res.status(201).json({
-      success: true,
+    return created(res, null, {
       token,
       user: user.toJSON(),
     });
@@ -65,29 +59,20 @@ exports.login = async (req, res, next) => {
     // Validation
     if (!email || !password) {
       logger.warn('Login validation failed', { email, hasPassword: !!password });
-      return res.status(400).json({
-        success: false,
-        message: 'Please provide email and password',
-      });
+      return badRequest(res, 'Please provide email and password');
     }
 
     // Check user and password
     const user = await User.findOne({ email }).select('+password');
     if (!user) {
       logger.warn('Login failed: user not found', { email });
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid credentials',
-      });
+      return unauthorized(res, 'Invalid credentials');
     }
 
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
       logger.warn('Login failed: invalid password', { email, userId: user._id });
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid credentials',
-      });
+      return unauthorized(res, 'Invalid credentials');
     }
 
     // Generate token
@@ -95,8 +80,7 @@ exports.login = async (req, res, next) => {
 
     logger.info('User logged in successfully', { userId: user._id, email });
 
-    res.json({
-      success: true,
+    return ok(res, null, {
       token,
       user: user.toJSON(),
     });
@@ -113,8 +97,7 @@ exports.getMe = async (req, res, next) => {
   try {
     logger.debug('Get current user', { userId: req.user._id });
     const user = await User.findById(req.user._id);
-    res.json({
-      success: true,
+    return ok(res, null, {
       user: user.toJSON(),
     });
   } catch (error) {
@@ -134,29 +117,20 @@ exports.forgotPassword = async (req, res, next) => {
 
     if (!email) {
       logger.warn('Forgot password validation failed', { email });
-      return res.status(400).json({
-        success: false,
-        message: 'Please provide email',
-      });
+      return badRequest(res, 'Please provide email');
     }
 
     const user = await User.findOne({ email });
     if (!user) {
       logger.warn('Forgot password: email not found', { email });
-      return res.status(404).json({
-        success: false,
-        message: 'Email not found',
-      });
+      return notFound(res, 'Email not found');
     }
 
     logger.info('Password reset requested', { email, userId: user._id });
 
     // In production, send reset link via email
     // For now, just return success
-    res.json({
-      success: true,
-      message: 'Password reset link sent to email',
-    });
+    return ok(res, 'Password reset link sent to email');
   } catch (error) {
     logger.error('Forgot password error', error, { email: req.body.email });
     next(error);
@@ -169,10 +143,7 @@ exports.forgotPassword = async (req, res, next) => {
 exports.logout = async (req, res, next) => {
   try {
     logger.info('User logged out', { userId: req.user._id });
-    res.json({
-      success: true,
-      message: 'Logged out successfully',
-    });
+    return ok(res, 'Logged out successfully');
   } catch (error) {
     logger.error('Logout error', error, { userId: req.user?._id });
     next(error);

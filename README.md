@@ -97,6 +97,10 @@ Server sẽ chạy tại `http://localhost:3000`
 - `POST /api/images/upload-multiple` - Upload nhiều hình ảnh
 - `DELETE /api/images/:id` - Xóa hình ảnh
 
+### Location
+- `GET /api/location/address?lat={lat}&lng={lng}` - Lấy địa chỉ (area/town name) từ lat/lng
+- `GET /api/location/full-address?lat={lat}&lng={lng}` - Lấy địa chỉ đầy đủ (area, address, name) từ lat/lng
+
 ## Ví dụ Request/Response
 
 ### Đăng ký

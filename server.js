@@ -7,12 +7,14 @@ const connectDB = require('./config/database');
 const errorHandler = require('./middleware/errorHandler');
 const logger = require('./services/logger');
 const { morganMiddleware, requestLogger } = require('./middleware/logger');
+const { ok, notFound } = require('./utils/responseHelper');
 
 // Import routes
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
 const restaurantRoutes = require('./routes/restaurantRoutes');
 const imageRoutes = require('./routes/imageRoutes');
+const locationRoutes = require('./routes/locationRoutes');
 
 // Connect to database
 connectDB();
@@ -61,9 +63,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
  *                   type: string
  */
 app.get('/health', (req, res) => {
-  res.json({
-    success: true,
-    message: 'Server is running',
+  return ok(res, 'Server is running', {
     timestamp: new Date().toISOString(),
   });
 });
@@ -73,13 +73,11 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/restaurants', restaurantRoutes);
 app.use('/api/images', imageRoutes);
+app.use('/api/location', locationRoutes);
 
 // 404 handler
 app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    message: 'Route not found',
-  });
+  return notFound(res, 'Route not found');
 });
 
 // Error handler (must be last)
