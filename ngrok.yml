@@ -1,0 +1,37 @@
+version: "2"
+authtoken: 346WmQmfJbox4KOVtqw1CdJxEvv_5xCTe6FMnJ8HJFwdK551w
+
+# Logging
+log_level: debug
+log_format: logfmt
+log: /tmp/ngrok.log
+
+# Tunnels configuration
+tunnels:
+  # HTTP tunnel cho API server
+  go-server-api:
+    addr: 3000
+    proto: http
+    inspect: true
+    # Request headers
+    request_header:
+      add:
+        - "X-Ngrok-Tunnel: go-server-api"
+    # Response headers
+    response_header:
+      add:
+        - "Access-Control-Allow-Origin: *"
+        - "Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS"
+        - "Access-Control-Allow-Headers: Content-Type, Authorization"
+    # Custom domain (nếu có account paid, uncomment và thay đổi)
+    # domain: your-domain.ngrok.io
+    # subdomain: go-server
+
+# Region (chọn region gần nhất để giảm latency)
+# Options: us, eu, ap, au, sa, jp, in
+region: ap
+
+# Console UI
+console_ui: true
+console_ui_color: transparent
+
