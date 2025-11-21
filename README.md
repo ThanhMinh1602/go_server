@@ -36,7 +36,7 @@ cp .env.example .env
 
 4. Cấu hình các biến môi trường trong file `.env`:
 ```env
-PORT=3000
+PORT=5001
 NODE_ENV=development
 MONGODB_URI=mongodb://localhost:27017/gogo_db
 JWT_SECRET=your-super-secret-jwt-key
@@ -44,7 +44,7 @@ JWT_EXPIRE=7d
 CLOUDINARY_CLOUD_NAME=your-cloudinary-cloud-name
 CLOUDINARY_API_KEY=your-cloudinary-api-key
 CLOUDINARY_API_SECRET=your-cloudinary-api-secret
-CORS_ORIGIN=http://localhost:3000
+CORS_ORIGIN=http://localhost:5001
 ```
 
 ## Cấu hình Cloudinary
@@ -68,7 +68,7 @@ npm run dev
 npm start
 ```
 
-Server sẽ chạy tại `http://localhost:3000`
+Server sẽ chạy tại `http://localhost:5001`
 
 ## API Endpoints
 

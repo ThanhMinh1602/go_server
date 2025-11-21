@@ -10,7 +10,7 @@ log: /tmp/ngrok.log
 tunnels:
   # HTTP tunnel cho API server
   go-server-api:
-    addr: 3000
+    addr: 5001
     proto: http
     inspect: true
     # Request headers

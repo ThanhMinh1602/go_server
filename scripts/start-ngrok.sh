@@ -39,8 +39,8 @@ if grep -q "YOUR_AUTH_TOKEN_HERE" "$CONFIG_FILE"; then
 fi
 
 # Kiểm tra server đang chạy chưa (chỉ cảnh báo, không bắt buộc)
-if ! lsof -Pi :3000 -sTCP:LISTEN -t >/dev/null ; then
-    echo -e "${YELLOW}⚠️  Warning: Server is not running on port 3000${NC}"
+if ! lsof -Pi :5001 -sTCP:LISTEN -t >/dev/null ; then
+    echo -e "${YELLOW}⚠️  Warning: Server is not running on port 5001${NC}"
     echo -e "${YELLOW}Please start your server first: npm run dev${NC}"
     echo -e "${YELLOW}Continuing anyway...${NC}"
 fi

@@ -121,12 +121,24 @@ app.use((req, res) => {
 app.use(errorHandler);
 
 // Start server
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5001;
 server.listen(PORT, () => {
   logger.info(`Server running on port ${PORT}`);
   logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
   logger.info(`Log level: ${process.env.LOG_LEVEL || 'debug'}`);
   logger.info(`Socket.IO enabled on port ${PORT}`);
   logger.debug('Server initialized successfully');
+});
+
+// Handle server errors
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    logger.error(`Port ${PORT} is already in use. Please kill the process using this port or use a different port.`);
+    logger.error(`To find and kill the process: lsof -ti:${PORT} | xargs kill`);
+    process.exit(1);
+  } else {
+    logger.error('Server error:', err);
+    process.exit(1);
+  }
 });
 
