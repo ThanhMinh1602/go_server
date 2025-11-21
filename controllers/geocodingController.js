@@ -260,9 +260,7 @@ exports.getFullAddress = async (req, res, next) => {
             addressdetails: 1,
             namedetails: 1,
           },
-          headers: {
-            'User-Agent': 'GoApp/1.0',
-          },
+          headers: getNominatimHeaders(),
           timeout: 10000,
         }
       );
@@ -314,6 +312,7 @@ exports.getFullAddress = async (req, res, next) => {
           address.village ||
           address.suburb ||
           address.city_district ||
+          address.city || // Thêm city field (thường có trong response của Việt Nam)
           address.town ||
           address.municipality ||
           address.neighbourhood ||
@@ -333,11 +332,16 @@ exports.getFullAddress = async (req, res, next) => {
           ) {
             if (address.village) {
               area = `Xã ${area}`;
-            } else if (address.suburb || address.city_district) {
+            } else if (address.suburb || address.city_district || address.city) {
+              // city thường là Phường ở Việt Nam
               area = `Phường ${area}`;
             } else if (address.town) {
               area = `Thị trấn ${area}`;
             }
+          } else {
+            // Nếu area đã có prefix, giữ nguyên nhưng loại bỏ "Phường" nếu có trong city
+            // Ví dụ: "Phường Ngũ Hành Sơn" -> giữ nguyên
+            area = area.trim();
           }
         }
 
