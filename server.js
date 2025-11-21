@@ -18,6 +18,7 @@ const userRoutes = require('./routes/userRoutes');
 const locationRoutes = require('./routes/locationRoutes');
 const imageRoutes = require('./routes/imageRoutes');
 const geocodingRoutes = require('./routes/geocodingRoutes');
+const friendRoutes = require('./routes/friendRoutes');
 
 // Connect to database
 connectDB();
@@ -111,6 +112,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/locations', locationRoutes);
 app.use('/api/images', imageRoutes);
 app.use('/api/location', geocodingRoutes);
+app.use('/api/friends', friendRoutes);
 
 // 404 handler
 app.use((req, res) => {
