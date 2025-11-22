@@ -199,3 +199,7 @@ $RECYCLE.BIN/
 # Project specific
 logs/
 *.log
+
+# Firebase Service Account Keys (SECURITY: Never commit these!)
+*-firebase-adminsdk-*.json
+go-go-*-firebase-adminsdk-*.json

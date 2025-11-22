@@ -2,6 +2,8 @@ const Friend = require('../models/Friend');
 const User = require('../models/User');
 const logger = require('../services/logger');
 const { ok, notFound, badRequest, forbidden } = require('../utils/responseHelper');
+const fcmService = require('../services/fcmService');
+const socketEvents = require('../utils/socketEvents');
 
 // @desc    Get QR code link for friend request
 // @route   GET /api/friends/qr-code
@@ -66,6 +68,22 @@ exports.sendFriendRequest = async (req, res, next) => {
             friend: existingRequest.toJSON(),
           });
         }
+      }
+      if (existingRequest.status === 'rejected') {
+        // Nếu request đã bị reject, cho phép gửi lại
+        // Cập nhật lại request với requester và recipient mới (có thể đổi chiều)
+        existingRequest.requester = requesterId;
+        existingRequest.recipient = recipientId;
+        existingRequest.status = 'pending';
+        await existingRequest.save();
+        
+        // Populate for response
+        await existingRequest.populate('requester', 'name email avatar');
+        await existingRequest.populate('recipient', 'name email avatar');
+        
+        return ok(res, 'Friend request sent', {
+          friendRequest: existingRequest.toJSON(),
+        });
       }
     }
 
@@ -138,6 +156,49 @@ exports.acceptFriendRequest = async (req, res, next) => {
 
     friendRequest.status = 'accepted';
     await friendRequest.save();
+
+    // Populate for response
+    await friendRequest.populate('requester', 'name email avatar');
+    await friendRequest.populate('recipient', 'name email avatar');
+
+    // Get requester info for notification
+    const requester = await User.findById(friendRequest.requester._id);
+    const accepter = req.user;
+
+    // Send FCM notification to requester
+    if (requester && requester.fcmToken) {
+      fcmService.sendFriendRequestAcceptedNotification(
+        requester.fcmToken,
+        {
+          id: accepter._id.toString(),
+          name: accepter.name,
+          avatar: accepter.avatar,
+        },
+      ).catch(err => {
+        logger.error('Failed to send FCM notification', err);
+      });
+    }
+
+    // Emit socket events to both users
+    const io = req.app.get('io');
+    if (io) {
+      const friendData = {
+        ...friendRequest.toJSON(),
+        requester: friendRequest.requester.toJSON(),
+        recipient: friendRequest.recipient.toJSON(),
+      };
+
+      // Notify requester
+      io.to(`user:${friendRequest.requester._id}`).emit(
+        socketEvents.FRIEND_REQUEST_ACCEPTED,
+        { friend: friendData },
+      );
+
+      // Notify accepter
+      io.to(`user:${userId}`).emit(socketEvents.FRIEND_ADDED, {
+        friend: friendData,
+      });
+    }
 
     return ok(res, 'Friend request accepted', {
       friend: friendRequest.toJSON(),
@@ -260,12 +321,103 @@ exports.addFriendFromQR = async (req, res, next) => {
           // Auto-accept if recipient is sending request back
           existingRequest.status = 'accepted';
           await existingRequest.save();
+          
+          // Populate for response
+          await existingRequest.populate('requester', 'name email avatar');
+          await existingRequest.populate('recipient', 'name email avatar');
+
+          // Get users for notification
+          const requester = await User.findById(existingRequest.requester._id);
+          const accepter = await User.findById(existingRequest.recipient._id);
+
+          // Send FCM notification to requester
+          if (requester && requester.fcmToken) {
+            fcmService.sendFriendRequestAcceptedNotification(
+              requester.fcmToken,
+              {
+                id: accepter._id.toString(),
+                name: accepter.name,
+                avatar: accepter.avatar,
+              },
+            ).catch(err => {
+              logger.error('Failed to send FCM notification', err);
+            });
+          }
+
+          // Emit socket events
+          const io = req.app.get('io');
+          if (io) {
+            const friendData = {
+              ...existingRequest.toJSON(),
+              requester: existingRequest.requester.toJSON(),
+              recipient: existingRequest.recipient.toJSON(),
+            };
+
+            io.to(`user:${existingRequest.requester._id}`).emit(
+              socketEvents.FRIEND_REQUEST_ACCEPTED,
+              { friend: friendData },
+            );
+
+            io.to(`user:${existingRequest.recipient._id}`).emit(
+              socketEvents.FRIEND_ADDED,
+              { friend: friendData },
+            );
+          }
+
           return ok(res, 'Friend request accepted', {
             friend: existingRequest.toJSON(),
           });
         }
       }
+      if (existingRequest.status === 'rejected') {
+        // Nếu request đã bị reject, cho phép gửi lại
+        // Cập nhật lại request với requester và recipient mới (có thể đổi chiều)
+        existingRequest.requester = requesterId;
+        existingRequest.recipient = recipientId;
+        existingRequest.status = 'pending';
+        await existingRequest.save();
+        
+        // Populate for response
+        await existingRequest.populate('requester', 'name email avatar');
+        await existingRequest.populate('recipient', 'name email avatar');
+        
+        // Get requester info for notification
+        const requesterUser = await User.findById(requesterId);
+        
+        // Send FCM notification to recipient
+        if (recipient && recipient.fcmToken) {
+          fcmService.sendFriendRequestNotification(
+            recipient.fcmToken,
+            {
+              id: requesterUser._id.toString(),
+              name: requesterUser.name,
+              avatar: requesterUser.avatar,
+            },
+            existingRequest._id.toString(),
+          ).catch(err => {
+            logger.error('Failed to send FCM notification', err);
+          });
+        }
+
+        // Emit socket event to recipient
+        const io = req.app.get('io');
+        if (io) {
+          io.to(`user:${recipientId}`).emit(socketEvents.FRIEND_REQUEST_RECEIVED, {
+            request: {
+              ...existingRequest.toJSON(),
+              requester: existingRequest.requester.toJSON(),
+            },
+          });
+        }
+        
+        return ok(res, 'Friend request sent', {
+          friendRequest: existingRequest.toJSON(),
+        });
+      }
     }
+
+    // Get requester info for notification
+    const requester = await User.findById(requesterId);
 
     // Create new friend request
     const friendRequest = new Friend({
@@ -275,6 +427,35 @@ exports.addFriendFromQR = async (req, res, next) => {
     });
 
     await friendRequest.save();
+
+    // Populate requester for response and notification
+    await friendRequest.populate('requester', 'name email avatar');
+
+    // Send FCM notification
+    if (recipient.fcmToken) {
+      fcmService.sendFriendRequestNotification(
+        recipient.fcmToken,
+        {
+          id: requester._id.toString(),
+          name: requester.name,
+          avatar: requester.avatar,
+        },
+        friendRequest._id.toString(),
+      ).catch(err => {
+        logger.error('Failed to send FCM notification', err);
+      });
+    }
+
+    // Emit socket event to recipient
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`user:${recipientId}`).emit(socketEvents.FRIEND_REQUEST_RECEIVED, {
+        request: {
+          ...friendRequest.toJSON(),
+          requester: requester.toJSON(),
+        },
+      });
+    }
 
     return ok(res, 'Friend request sent', {
       friendRequest: friendRequest.toJSON(),

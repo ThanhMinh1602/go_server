@@ -56,6 +56,7 @@ exports.updateUser = async (req, res, next) => {
     if (name) user.name = name;
     if (phone !== undefined) user.phone = phone;
     if (avatar !== undefined) user.avatar = avatar;
+    if (req.body.fcmToken !== undefined) user.fcmToken = req.body.fcmToken;
 
     await user.save();
 

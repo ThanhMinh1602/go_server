@@ -19,6 +19,16 @@ const LOCATION_CREATED = 'location:created';
 const LOCATION_UPDATED = 'location:updated';
 const LOCATION_DELETED = 'location:deleted';
 
+// Friend Room Events
+const JOIN_FRIENDS = 'join:friends';
+const LEAVE_FRIENDS = 'leave:friends';
+
+// Friend Events
+const FRIEND_REQUEST_RECEIVED = 'friend:request:received';
+const FRIEND_REQUEST_ACCEPTED = 'friend:request:accepted';
+const FRIEND_REQUEST_REJECTED = 'friend:request:rejected';
+const FRIEND_ADDED = 'friend:added';
+
 module.exports = {
   // Connection Events
   CONNECT,
@@ -30,9 +40,17 @@ module.exports = {
   // Room Events
   JOIN_LOCATIONS,
   LEAVE_LOCATIONS,
+  JOIN_FRIENDS,
+  LEAVE_FRIENDS,
 
   // Location Events
   LOCATION_CREATED,
   LOCATION_UPDATED,
   LOCATION_DELETED,
+
+  // Friend Events
+  FRIEND_REQUEST_RECEIVED,
+  FRIEND_REQUEST_ACCEPTED,
+  FRIEND_REQUEST_REJECTED,
+  FRIEND_ADDED,
 };

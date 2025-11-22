@@ -55,6 +55,30 @@ io.on('connection', (socket) => {
     socket.leave('locations');
     logger.debug('Client left locations room', { socketId: socket.id });
   });
+
+  // Join user room for friend updates
+  socket.on('join:user', (userId) => {
+    socket.join(`user:${userId}`);
+    logger.debug('Client joined user room', { socketId: socket.id, userId });
+  });
+
+  // Leave user room
+  socket.on('leave:user', (userId) => {
+    socket.leave(`user:${userId}`);
+    logger.debug('Client left user room', { socketId: socket.id, userId });
+  });
+
+  // Join friends room
+  socket.on(socketEvents.JOIN_FRIENDS, () => {
+    socket.join('friends');
+    logger.debug('Client joined friends room', { socketId: socket.id });
+  });
+
+  // Leave friends room
+  socket.on(socketEvents.LEAVE_FRIENDS, () => {
+    socket.leave('friends');
+    logger.debug('Client left friends room', { socketId: socket.id });
+  });
 });
 
 // Export io để sử dụng trong controllers

@@ -142,7 +142,17 @@ exports.forgotPassword = async (req, res, next) => {
 // @access  Private
 exports.logout = async (req, res, next) => {
   try {
-    logger.info('User logged out', { userId: req.user._id });
+    const userId = req.user._id;
+    
+    // Xóa FCM token khi logout
+    const user = await User.findById(userId);
+    if (user) {
+      user.fcmToken = null;
+      await user.save();
+      logger.info('FCM token removed on logout', { userId });
+    }
+    
+    logger.info('User logged out', { userId });
     return ok(res, 'Logged out successfully');
   } catch (error) {
     logger.error('Logout error', error, { userId: req.user?._id });
