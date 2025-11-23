@@ -85,8 +85,6 @@ async function sendNotification(fcmToken, title, body, data = {}) {
         }, {}),
       },
       token: fcmToken,
-      // Highest priority for immediate delivery
-      priority: 'high',
       android: {
         priority: 'high', // Highest priority for Android
         notification: {

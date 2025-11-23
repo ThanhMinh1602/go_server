@@ -19,6 +19,7 @@ const locationRoutes = require('./routes/locationRoutes');
 const imageRoutes = require('./routes/imageRoutes');
 const geocodingRoutes = require('./routes/geocodingRoutes');
 const friendRoutes = require('./routes/friendRoutes');
+const messageRoutes = require('./routes/messageRoutes');
 
 // Connect to database
 connectDB();
@@ -79,6 +80,18 @@ io.on('connection', (socket) => {
     socket.leave('friends');
     logger.debug('Client left friends room', { socketId: socket.id });
   });
+
+  // Join messages room
+  socket.on(socketEvents.JOIN_MESSAGES, () => {
+    socket.join('messages');
+    logger.debug('Client joined messages room', { socketId: socket.id });
+  });
+
+  // Leave messages room
+  socket.on(socketEvents.LEAVE_MESSAGES, () => {
+    socket.leave('messages');
+    logger.debug('Client left messages room', { socketId: socket.id });
+  });
 });
 
 // Export io để sử dụng trong controllers
@@ -137,6 +150,7 @@ app.use('/api/locations', locationRoutes);
 app.use('/api/images', imageRoutes);
 app.use('/api/location', geocodingRoutes);
 app.use('/api/friends', friendRoutes);
+app.use('/api/messages', messageRoutes);
 
 // 404 handler
 app.use((req, res) => {
