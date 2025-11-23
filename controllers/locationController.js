@@ -389,6 +389,7 @@ exports.deleteLocation = async (req, res, next) => {
     // Emit socket event để notify clients
     emitLocationEvent(req, socketEvents.LOCATION_DELETED, {
       locationId: locationId,
+      userId: userId.toString(), // Gửi userId để frontend có thể filter
     });
 
     return ok(res, 'Location deleted');
