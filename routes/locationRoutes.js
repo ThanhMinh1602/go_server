@@ -7,6 +7,7 @@ const {
   updateLocation,
   deleteLocation,
   getDistinctAreas,
+  getLocationsByUser,
 } = require('../controllers/locationController');
 const { auth } = require('../middleware/auth');
 
@@ -32,6 +33,45 @@ const { auth } = require('../middleware/auth');
  *                     type: string
  */
 router.get('/areas', auth, getDistinctAreas);
+
+/**
+ * @swagger
+ * /api/locations/user/me:
+ *   get:
+ *     summary: Get locations by current user (only own locations)
+ *     tags: [Locations]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: area
+ *         schema:
+ *           type: string
+ *         description: Filter by area
+ *       - in: query
+ *         name: type
+ *         schema:
+ *           type: string
+ *           enum: [food, coffee]
+ *         description: Filter by type
+ *     responses:
+ *       200:
+ *         description: List of locations from current user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 count:
+ *                   type: number
+ *                 locations:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Location'
+ */
+router.get('/user/me', auth, getLocationsByUser);
 
 /**
  * @swagger

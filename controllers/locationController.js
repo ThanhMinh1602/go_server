@@ -91,6 +91,50 @@ exports.getAllLocations = async (req, res, next) => {
   }
 };
 
+// @desc    Get locations by current user (only own locations)
+// @route   GET /api/locations/user/me
+// @access  Private
+exports.getLocationsByUser = async (req, res, next) => {
+  try {
+    const { area, type } = req.query;
+    const userId = req.user._id;
+
+    logger.debug('Get locations by user', { userId, area, type });
+
+    // Build query for filtering - chỉ lấy locations của user hiện tại
+    let query = {
+      userId: userId,
+    };
+
+    if (area && area !== 'All' && area !== 'all') {
+      query.area = area;
+    }
+
+    if (type && type !== 'All' && type !== 'all') {
+      query.types = { $in: [type] };
+    }
+
+    const locations = await Location.find(query)
+      .populate('userId', 'name avatar email')
+      .sort({ createdAt: -1 });
+
+    logger.info('User locations retrieved', { 
+      count: locations.length, 
+      area, 
+      type,
+      userId: userId.toString(),
+    });
+
+    return ok(res, null, {
+      count: locations.length,
+      locations: locations.map(l => formatLocationWithCreator(l)),
+    });
+  } catch (error) {
+    logger.error('Get locations by user error', error, { area: req.query.area, type: req.query.type });
+    next(error);
+  }
+};
+
 // @desc    Get location by ID (only if friend or owner)
 // @route   GET /api/locations/:id
 // @access  Private
