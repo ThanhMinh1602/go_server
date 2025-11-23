@@ -6,6 +6,29 @@ const { ok, created, badRequest, notFound, forbidden } = require('../utils/respo
 const { emitLocationEvent } = require('../utils/socketHelper');
 const socketEvents = require('../utils/socketEvents');
 
+// Helper function to format location with creator info
+const formatLocationWithCreator = (location) => {
+  const locationObj = location.toJSON ? location.toJSON() : location.toObject();
+  
+  // If userId is populated (has user info)
+  if (location.userId && typeof location.userId === 'object' && location.userId._id) {
+    locationObj.createdBy = {
+      id: location.userId._id.toString(),
+      name: location.userId.name || '',
+      avatar: location.userId.avatar || null,
+      email: location.userId.email || '',
+    };
+    // Keep userId for backward compatibility
+    locationObj.userId = location.userId._id.toString();
+  } else if (location.userId) {
+    // If userId is just an ObjectId, keep it as is
+    locationObj.userId = location.userId.toString();
+    locationObj.createdBy = null; // Will be populated if needed
+  }
+  
+  return locationObj;
+};
+
 // @desc    Get all locations (only from friends)
 // @route   GET /api/locations
 // @access  Private
@@ -47,7 +70,9 @@ exports.getAllLocations = async (req, res, next) => {
       query.types = { $in: [type] };
     }
 
-    const locations = await Location.find(query).sort({ createdAt: -1 });
+    const locations = await Location.find(query)
+      .populate('userId', 'name avatar email')
+      .sort({ createdAt: -1 });
 
     logger.info('Locations retrieved', { 
       count: locations.length, 
@@ -58,7 +83,7 @@ exports.getAllLocations = async (req, res, next) => {
 
     return ok(res, null, {
       count: locations.length,
-      locations: locations.map(l => l.toJSON()),
+      locations: locations.map(l => formatLocationWithCreator(l)),
     });
   } catch (error) {
     logger.error('Get all locations error', error, { area: req.query.area, type: req.query.type });
@@ -72,24 +97,30 @@ exports.getAllLocations = async (req, res, next) => {
 exports.getLocation = async (req, res, next) => {
   try {
     const userId = req.user._id;
-    const location = await Location.findById(req.params.id);
+    const location = await Location.findById(req.params.id)
+      .populate('userId', 'name avatar email');
     
     if (!location) {
       return notFound(res, 'Location not found');
     }
 
+    // Get location owner ID (handle both populated and non-populated cases)
+    const locationOwnerId = location.userId._id 
+      ? location.userId._id.toString() 
+      : location.userId.toString();
+
     // Check if user is the owner
-    if (location.userId.toString() === userId.toString()) {
+    if (locationOwnerId === userId.toString()) {
       return ok(res, null, {
-        location: location.toJSON(),
+        location: formatLocationWithCreator(location),
       });
     }
 
     // Check if user is friend with location owner
     const friendship = await Friend.findOne({
       $or: [
-        { requester: userId, recipient: location.userId, status: 'accepted' },
-        { requester: location.userId, recipient: userId, status: 'accepted' },
+        { requester: userId, recipient: locationOwnerId, status: 'accepted' },
+        { requester: locationOwnerId, recipient: userId, status: 'accepted' },
       ],
     });
 
@@ -98,7 +129,7 @@ exports.getLocation = async (req, res, next) => {
     }
 
     return ok(res, null, {
-      location: location.toJSON(),
+      location: formatLocationWithCreator(location),
     });
   } catch (error) {
     next(error);
@@ -146,13 +177,16 @@ exports.createLocation = async (req, res, next) => {
 
     logger.info('Location created successfully', { locationId: location._id, name, userId });
 
+    // Populate user info before sending response
+    await location.populate('userId', 'name avatar email');
+
     // Emit socket event để notify clients
     emitLocationEvent(req, socketEvents.LOCATION_CREATED, {
-      location: location.toJSON(),
+      location: formatLocationWithCreator(location),
     });
 
     return created(res, null, {
-      location: location.toJSON(),
+      location: formatLocationWithCreator(location),
     });
   } catch (error) {
     logger.error('Create location error', error, { name: req.body.name });
@@ -223,15 +257,18 @@ exports.updateLocation = async (req, res, next) => {
 
     await location.save();
 
+    // Populate user info before sending response
+    await location.populate('userId', 'name avatar email');
+
     logger.info('Location updated successfully', { locationId: location._id });
 
     // Emit socket event để notify clients
     emitLocationEvent(req, socketEvents.LOCATION_UPDATED, {
-      location: location.toJSON(),
+      location: formatLocationWithCreator(location),
     });
 
     return ok(res, null, {
-      location: location.toJSON(),
+      location: formatLocationWithCreator(location),
     });
   } catch (error) {
     next(error);
