@@ -28,6 +28,11 @@ const locationSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true, // Temporarily false for migration, set to true after migration
+  },
 }, {
   timestamps: true, // Adds createdAt and updatedAt
 });

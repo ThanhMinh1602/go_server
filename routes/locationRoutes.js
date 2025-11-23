@@ -8,6 +8,7 @@ const {
   deleteLocation,
   getDistinctAreas,
 } = require('../controllers/locationController');
+const { auth } = require('../middleware/auth');
 
 /**
  * @swagger
@@ -30,7 +31,7 @@ const {
  *                   items:
  *                     type: string
  */
-router.get('/areas', getDistinctAreas);
+router.get('/areas', auth, getDistinctAreas);
 
 /**
  * @swagger
@@ -38,6 +39,8 @@ router.get('/areas', getDistinctAreas);
  *   get:
  *     summary: Get location by ID
  *     tags: [Locations]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -59,15 +62,19 @@ router.get('/areas', getDistinctAreas);
  *                   $ref: '#/components/schemas/Location'
  *       404:
  *         description: Location not found
+ *       403:
+ *         description: Forbidden - not friend with location owner
  */
-router.get('/:id', getLocation);
+router.get('/:id', auth, getLocation);
 
 /**
  * @swagger
  * /api/locations:
  *   get:
- *     summary: Get all locations
+ *     summary: Get all locations (only from friends)
  *     tags: [Locations]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: query
  *         name: area
@@ -82,7 +89,7 @@ router.get('/:id', getLocation);
  *         description: Filter by type
  *     responses:
  *       200:
- *         description: List of locations
+ *         description: List of locations from friends
  *         content:
  *           application/json:
  *             schema:
@@ -97,7 +104,7 @@ router.get('/:id', getLocation);
  *                   items:
  *                     $ref: '#/components/schemas/Location'
  */
-router.get('/', getAllLocations);
+router.get('/', auth, getAllLocations);
 
 /**
  * @swagger
@@ -105,6 +112,8 @@ router.get('/', getAllLocations);
  *   post:
  *     summary: Create a new location
  *     tags: [Locations]
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -155,7 +164,7 @@ router.get('/', getAllLocations);
  *       400:
  *         description: Bad request
  */
-router.post('/', createLocation);
+router.post('/', auth, createLocation);
 
 /**
  * @swagger
@@ -214,7 +223,7 @@ router.post('/', createLocation);
  *       404:
  *         description: Location not found
  */
-router.put('/:id', updateLocation);
+router.put('/:id', auth, updateLocation);
 
 /**
  * @swagger
@@ -222,6 +231,8 @@ router.put('/:id', updateLocation);
  *   delete:
  *     summary: Delete location
  *     tags: [Locations]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -238,8 +249,10 @@ router.put('/:id', updateLocation);
  *               $ref: '#/components/schemas/Success'
  *       404:
  *         description: Location not found
+ *       403:
+ *         description: Forbidden - not the owner
  */
-router.delete('/:id', deleteLocation);
+router.delete('/:id', auth, deleteLocation);
 
 module.exports = router;
 

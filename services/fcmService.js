@@ -85,18 +85,32 @@ async function sendNotification(fcmToken, title, body, data = {}) {
         }, {}),
       },
       token: fcmToken,
+      // Highest priority for immediate delivery
+      priority: 'high',
       android: {
-        priority: 'high',
+        priority: 'high', // Highest priority for Android
         notification: {
           sound: 'default',
           channelId: 'friend_requests',
+          priority: 'high', // High priority to show immediately
+          visibility: 'public', // Show on lock screen
+          defaultSound: true,
+          defaultVibrateTimings: true,
         },
       },
       apns: {
+        headers: {
+          'apns-priority': '10', // Highest priority (10) for iOS
+        },
         payload: {
           aps: {
             sound: 'default',
             badge: 1,
+            alert: {
+              title: title,
+              body: body,
+            },
+            'content-available': 1, // Wake app if needed
           },
         },
       },

@@ -1,24 +1,46 @@
 const Location = require('../models/Location'); // Location model thay thế Restaurant
+const Friend = require('../models/Friend');
 const logger = require('../services/logger');
 const cloudinaryService = require('../services/cloudinaryService');
-const { ok, created, badRequest, notFound } = require('../utils/responseHelper');
+const { ok, created, badRequest, notFound, forbidden } = require('../utils/responseHelper');
 const { emitLocationEvent } = require('../utils/socketHelper');
 const socketEvents = require('../utils/socketEvents');
 
-// @desc    Get all locations
+// @desc    Get all locations (only from friends)
 // @route   GET /api/locations
-// @access  Public
+// @access  Private
 exports.getAllLocations = async (req, res, next) => {
   try {
     const { area, type } = req.query;
+    const userId = req.user._id;
 
-    logger.debug('Get all locations', { area, type });
+    logger.debug('Get all locations', { userId, area, type });
 
-    let query = {};
+    // Get list of friend IDs (both requester and recipient)
+    const friendships = await Friend.find({
+      $or: [
+        { requester: userId, status: 'accepted' },
+        { recipient: userId, status: 'accepted' },
+      ],
+    });
+
+    const friendIds = friendships.map(friendship => {
+      const friendId = friendship.requester._id.toString() === userId.toString()
+        ? friendship.recipient._id
+        : friendship.requester._id;
+      return friendId;
+    });
+
+    // Include current user's own locations
+    friendIds.push(userId);
 
     // Build query for filtering
+    let query = {
+      userId: { $in: friendIds },
+    };
+
     if (area && area !== 'All' && area !== 'all') {
-      query.area = area; // Location model có area trực tiếp
+      query.area = area;
     }
 
     if (type && type !== 'All' && type !== 'all') {
@@ -27,7 +49,12 @@ exports.getAllLocations = async (req, res, next) => {
 
     const locations = await Location.find(query).sort({ createdAt: -1 });
 
-    logger.info('Locations retrieved', { count: locations.length, area, type });
+    logger.info('Locations retrieved', { 
+      count: locations.length, 
+      area, 
+      type,
+      friendCount: friendIds.length - 1, // Exclude current user
+    });
 
     return ok(res, null, {
       count: locations.length,
@@ -39,15 +66,37 @@ exports.getAllLocations = async (req, res, next) => {
   }
 };
 
-// @desc    Get location by ID
+// @desc    Get location by ID (only if friend or owner)
 // @route   GET /api/locations/:id
-// @access  Public
+// @access  Private
 exports.getLocation = async (req, res, next) => {
   try {
+    const userId = req.user._id;
     const location = await Location.findById(req.params.id);
+    
     if (!location) {
       return notFound(res, 'Location not found');
     }
+
+    // Check if user is the owner
+    if (location.userId.toString() === userId.toString()) {
+      return ok(res, null, {
+        location: location.toJSON(),
+      });
+    }
+
+    // Check if user is friend with location owner
+    const friendship = await Friend.findOne({
+      $or: [
+        { requester: userId, recipient: location.userId, status: 'accepted' },
+        { requester: location.userId, recipient: userId, status: 'accepted' },
+      ],
+    });
+
+    if (!friendship) {
+      return forbidden(res, 'You can only view locations from your friends');
+    }
+
     return ok(res, null, {
       location: location.toJSON(),
     });
@@ -58,12 +107,13 @@ exports.getLocation = async (req, res, next) => {
 
 // @desc    Create location
 // @route   POST /api/locations
-// @access  Public (can be changed to Private if needed)
+// @access  Private
 exports.createLocation = async (req, res, next) => {
   try {
     const { name, types, imageUrls, latLng, address, area } = req.body;
+    const userId = req.user._id;
 
-    logger.debug('Create location attempt', { name, types, hasLatLng: !!latLng });
+    logger.debug('Create location attempt', { userId, name, types, hasLatLng: !!latLng });
 
     // Validation
     if (!name || !types || !Array.isArray(types) || types.length === 0) {
@@ -91,9 +141,10 @@ exports.createLocation = async (req, res, next) => {
       },
       address,
       area,
+      userId,
     });
 
-    logger.info('Location created successfully', { locationId: location._id, name });
+    logger.info('Location created successfully', { locationId: location._id, name, userId });
 
     // Emit socket event để notify clients
     emitLocationEvent(req, socketEvents.LOCATION_CREATED, {
@@ -111,14 +162,20 @@ exports.createLocation = async (req, res, next) => {
 
 // @desc    Update location
 // @route   PUT /api/locations/:id
-// @access  Public (can be changed to Private if needed)
+// @access  Private (only owner can update)
 exports.updateLocation = async (req, res, next) => {
   try {
     const { name, types, imageUrls, latLng, address, area } = req.body;
+    const userId = req.user._id;
 
     const location = await Location.findById(req.params.id);
     if (!location) {
       return notFound(res, 'Location not found');
+    }
+
+    // Check if user is the owner
+    if (location.userId.toString() !== userId.toString()) {
+      return forbidden(res, 'You can only update your own locations');
     }
 
     // Lưu danh sách images cũ để so sánh và xóa
@@ -183,12 +240,18 @@ exports.updateLocation = async (req, res, next) => {
 
 // @desc    Delete location
 // @route   DELETE /api/locations/:id
-// @access  Public (can be changed to Private if needed)
+// @access  Private (only owner can delete)
 exports.deleteLocation = async (req, res, next) => {
   try {
+    const userId = req.user._id;
     const location = await Location.findById(req.params.id);
     if (!location) {
       return notFound(res, 'Location not found');
+    }
+
+    // Check if user is the owner
+    if (location.userId.toString() !== userId.toString()) {
+      return forbidden(res, 'You can only delete your own locations');
     }
 
     const locationId = location._id.toString();
@@ -254,12 +317,33 @@ exports.deleteLocation = async (req, res, next) => {
   }
 };
 
-// @desc    Get distinct areas
+// @desc    Get distinct areas (only from friends' locations)
 // @route   GET /api/locations/areas
-// @access  Public
+// @access  Private
 exports.getDistinctAreas = async (req, res, next) => {
   try {
+    const userId = req.user._id;
+
+    // Get list of friend IDs
+    const friendships = await Friend.find({
+      $or: [
+        { requester: userId, status: 'accepted' },
+        { recipient: userId, status: 'accepted' },
+      ],
+    });
+
+    const friendIds = friendships.map(friendship => {
+      const friendId = friendship.requester._id.toString() === userId.toString()
+        ? friendship.recipient._id
+        : friendship.requester._id;
+      return friendId;
+    });
+
+    // Include current user's own locations
+    friendIds.push(userId);
+
     const locations = await Location.find({
+      userId: { $in: friendIds },
       area: { $exists: true, $ne: null, $ne: '' },
     });
 

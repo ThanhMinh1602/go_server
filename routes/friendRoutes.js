@@ -8,6 +8,7 @@ const {
   rejectFriendRequest,
   getFriends,
   addFriendFromQR,
+  deleteFriend,
 } = require('../controllers/friendController');
 const { auth } = require('../middleware/auth');
 
@@ -175,6 +176,33 @@ router.get('/', auth, getFriends);
  *         description: Unauthorized
  */
 router.post('/scan', auth, addFriendFromQR);
+
+/**
+ * @swagger
+ * /api/friends/{id}:
+ *   delete:
+ *     summary: Delete friend (unfriend)
+ *     tags: [Friends]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Friendship ID
+ *     responses:
+ *       200:
+ *         description: Friend removed successfully
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ *       404:
+ *         description: Friendship not found
+ */
+router.delete('/:id', auth, deleteFriend);
 
 module.exports = router;
 

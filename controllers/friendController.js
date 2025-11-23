@@ -468,3 +468,65 @@ exports.addFriendFromQR = async (req, res, next) => {
   }
 };
 
+// @desc    Delete friend (unfriend)
+// @route   DELETE /api/friends/:id
+// @access  Private
+exports.deleteFriend = async (req, res, next) => {
+  try {
+    const friendshipId = req.params.id;
+    const userId = req.user._id;
+
+    // Find friendship
+    const friendship = await Friend.findById(friendshipId);
+    if (!friendship) {
+      return notFound(res, 'Friendship not found');
+    }
+
+    // Check if user is part of this friendship
+    const isRequester = friendship.requester._id.toString() === userId.toString();
+    const isRecipient = friendship.recipient._id.toString() === userId.toString();
+
+    if (!isRequester && !isRecipient) {
+      return forbidden(res, 'Not authorized to delete this friendship');
+    }
+
+    // Check if friendship is accepted
+    if (friendship.status !== 'accepted') {
+      return badRequest(res, 'Can only delete accepted friendships');
+    }
+
+    // Get friend info before deleting (for notification)
+    const friendId = isRequester 
+      ? friendship.recipient._id 
+      : friendship.requester._id;
+
+    // Delete friendship
+    await friendship.deleteOne();
+
+    logger.info('Friendship deleted', { 
+      userId, 
+      friendId: friendId.toString(),
+      friendshipId 
+    });
+
+    // Emit socket event to both users
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`user:${userId}`).emit(socketEvents.FRIEND_REMOVED, {
+        friendId: friendId.toString(),
+      });
+      io.to(`user:${friendId}`).emit(socketEvents.FRIEND_REMOVED, {
+        friendId: userId.toString(),
+      });
+    }
+
+    return ok(res, 'Friend removed successfully');
+  } catch (error) {
+    logger.error('Delete friend error', error, { 
+      friendshipId: req.params.id,
+      userId: req.user?._id 
+    });
+    next(error);
+  }
+};
+
